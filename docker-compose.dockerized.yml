@@ -1,0 +1,50 @@
+version: '3.8'
+services:
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - '10000:10000'
+      - '10001:10001'
+    command: >-
+      sh -c "azurite-queue --queueHost 0.0.0.0 --location /data --debug /dev/stdout"
+    volumes:
+      - ./azurite-data:/data
+
+  backend:
+    build: ./backend
+    environment:
+      - AZURE_STORAGE_ACCOUNT=devstoreaccount1
+      - AZURE_STORAGE_ACCOUNT_KEY=Eby8vdM02xNOcqFeq...==
+      - AZURE_QUEUE_NAME=stock-events
+      - AZURE_QUEUE_URL=http://azurite:10001/devstoreaccount1
+      - LOG_LEVEL=info
+    depends_on:
+      - azurite
+    ports:
+      - '3000:3000'
+
+  supplier-api:
+    build: ./supplier-api
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - '4000:4000'
+
+  func_host:
+    image: mcr.microsoft.com/azure-functions/node:4-node18
+    command: bash -c "cd /home/site/wwwroot && func start --javascript --cors * --port 7071"
+    working_dir: /home/site/wwwroot
+    volumes:
+      - ./function:/home/site/wwwroot:ro
+    environment:
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFeq...==;QueueEndpoint=http://azurite:10001/devstoreaccount1;
+      - FUNCTIONS_WORKER_RUNTIME=node
+    ports:
+      - '7071:7071'
+    depends_on:
+      - azurite
+      - supplier-api
+
+networks:
+  default:
+    name: smartretail_network

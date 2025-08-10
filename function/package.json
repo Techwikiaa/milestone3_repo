@@ -1,0 +1,8 @@
+{
+  "name": "order-processor",
+  "version": "1.0.0",
+  "dependencies": {
+    "pino": "^8.8.0",
+    "node-fetch": "^2.6.7"
+  }
+}
